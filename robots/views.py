@@ -1,11 +1,16 @@
-from django.core.urlresolvers import reverse, NoReverseMatch
+import django
+from django.contrib.sitemaps import views as sitemap_views
+from django.contrib.sites.models import Site
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView
 
-from django.contrib.sites.models import Site
-
-from robots.models import Rule
 from robots import settings
+from robots.models import Rule
+
+if django.VERSION[:2] >= (2, 0):
+    from django.urls import NoReverseMatch, reverse
+else:
+    from django.core.urlresolvers import NoReverseMatch, reverse
 
 
 class RuleList(ListView):
@@ -18,27 +23,38 @@ class RuleList(ListView):
     cache_timeout = settings.CACHE_TIMEOUT
 
     def get_current_site(self, request):
-        return Site.objects.get_current()
+        if settings.SITE_BY_REQUEST:
+            return Site.objects.get(domain=request.get_host())
+        else:
+            return Site.objects.get_current()
 
     def reverse_sitemap_url(self):
         try:
-            return reverse('django.contrib.sitemaps.views.index')
+            if settings.SITEMAP_VIEW_NAME:
+                return reverse(settings.SITEMAP_VIEW_NAME)
+            else:
+                return reverse(sitemap_views.index)
         except NoReverseMatch:
             try:
-                return reverse('django.contrib.sitemaps.views.sitemap')
+                return reverse(sitemap_views.sitemap)
             except NoReverseMatch:
                 pass
 
+    def get_domain(self):
+        scheme = self.request.is_secure() and 'https' or 'http'
+        if not self.current_site.domain.startswith(('http', 'https')):
+            return "%s://%s" % (scheme, self.current_site.domain)
+        return self.current_site.domain
+
     def get_sitemap_urls(self):
-        sitemap_urls = settings.SITEMAP_URLS
+        sitemap_urls = list(settings.SITEMAP_URLS)
 
         if not sitemap_urls and settings.USE_SITEMAP:
-            scheme = self.request.is_secure() and 'https' or 'http'
             sitemap_url = self.reverse_sitemap_url()
 
             if sitemap_url is not None:
                 if not sitemap_url.startswith(('http', 'https')):
-                    sitemap_url = "%s://%s%s" % (scheme, self.current_site.domain, sitemap_url)
+                    sitemap_url = "%s%s" % (self.get_domain(), sitemap_url)
                 if sitemap_url not in sitemap_urls:
                     sitemap_urls.append(sitemap_url)
 
@@ -50,11 +66,19 @@ class RuleList(ListView):
     def get_context_data(self, **kwargs):
         context = super(RuleList, self).get_context_data(**kwargs)
         context['sitemap_urls'] = self.get_sitemap_urls()
+        if settings.USE_HOST:
+            if settings.USE_SCHEME_IN_HOST:
+                context['host'] = self.get_domain()
+            else:
+                context['host'] = self.current_site.domain
+        else:
+            context['host'] = None
         return context
 
     def render_to_response(self, context, **kwargs):
-        return super(RuleList, self).render_to_response(context,
-            content_type='text/plain', **kwargs)
+        return super(RuleList, self).render_to_response(
+            context, content_type='text/plain', **kwargs
+        )
 
     def get_cache_timeout(self):
         return self.cache_timeout

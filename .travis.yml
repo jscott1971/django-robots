@@ -1,0 +1,49 @@
+language: python
+sudo: false
+python:
+- 3.6
+- 3.5
+- 3.4
+- 2.7
+env:
+  matrix:
+  - TOXENV='pep8'
+  - TOXENV='isort'
+  - DJANGO='django111'
+  - DJANGO='django200'
+install:
+- pip install -U tox>=1.8 codecov
+- if [[ $TRAVIS_PYTHON_VERSION == '2.7' ]]; then export PYVER=py27; fi
+- if [[ $TRAVIS_PYTHON_VERSION == '3.4' ]]; then export PYVER=py34; fi
+- if [[ $TRAVIS_PYTHON_VERSION == '3.5' ]]; then export PYVER=py35; fi
+- if [[ $TRAVIS_PYTHON_VERSION == '3.6' ]]; then export PYVER=py36; fi
+- if [[ ${DJANGO}z != 'z' ]]; then export TOXENV=$PYVER-$DJANGO; fi
+script: COMMAND='coverage run' tox -e$TOXENV
+after_success:
+- codecov
+matrix:
+  exclude:
+  - python: 2.7
+    env: TOXENV='pep8'
+  - python: 2.7
+    env: TOXENV='isort'
+  - python: 2.7
+    env: DJANGO='django200'
+  - python: 3.4
+    env: TOXENV='pep8'
+  - python: 3.4
+    env: TOXENV='isort'
+  - python: 3.5
+    env: TOXENV='pep8'
+  - python: 3.5
+    env: TOXENV='isort'
+deploy:
+  provider: pypi
+  user: jazzband
+  distributions: "sdist bdist_wheel"
+  password:
+    secure: Hd0czf7xlpvyDpdM3PINaHk99jcCYa4roj/DsD1UZilBY2zGdqNdo3lcQKIjWUcoX25l+Hs9L6eb95DpT7yYYXELDbJSh0izzHJpmH9VR5gBY2hlweGwUeuu0PQ7o5HBezTXylE6JnbL56ugNrYmqNczF5Ncro/ZsHr4BCToI0M=
+  on:
+    tags: true
+    repo: jazzband/django-robots
+    condition: "$TOXENV = py27-django111"

@@ -2,16 +2,15 @@
 Robots exclusion application for Django
 =======================================
 
-This is a basic Django application to manage robots.txt files following the
-`robots exclusion protocol`_, complementing the Django_ `Sitemap contrib app`_.
+.. include:: ../README.rst
 
-The robots exclusion application consists of two database models which are
-tied together with a m2m relationship:
+Contents:
 
-* Rules_
-* URLs_
+.. toctree::
+   :maxdepth: 2
 
-.. _Django: http://www.djangoproject.com/
+   history
+
 
 Installation
 ============
@@ -22,20 +21,19 @@ Use your favorite Python installer to install it from PyPI::
 
 Or get the source from the application site at::
 
-    http://github.com/jezdez/django-robots/
+    http://github.com/jazzband/django-robots/
 
 To install the sitemap app, then follow these steps:
 
 1. Add ``'robots'`` to your INSTALLED_APPS_ setting.
 2. Make sure ``'django.template.loaders.app_directories.Loader'``
-   is in your TEMPLATE_LOADERS_ setting. It's in there by default, so
+   is in your TEMPLATES setting. It's in there by default, so
    you'll only need to change this if you've changed that setting.
 3. Make sure you've installed the `sites framework`_.
-4. Run the ``syncdb`` or ``migrate`` management command (depening if you're
-   using South or not)
+4. Run the ``migrate`` management command
 
 .. _INSTALLED_APPS: http://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
-.. _TEMPLATE_LOADERS: http://docs.djangoproject.com/en/dev/ref/settings/#template-loaders
+.. _TEMPLATES: https://docs.djangoproject.com/en/dev/ref/settings/#templates
 .. _sites framework: http://docs.djangoproject.com/en/dev/ref/contrib/sites/
 
 Sitemaps
@@ -58,7 +56,24 @@ automatically discovered, change the ``ROBOTS_SITEMAP_URLS`` setting to::
         'http://www.example.com/sitemap.xml',
     ]
 
+If the sitemap is wrapped in a decorator, dotted path reverse to discover
+the sitemap URL does not work.
+To overcome this, provide a name to the sitemap instance in ``urls.py``::
+
+    urlpatterns = [
+        ...
+        url(r'^sitemap.xml$', cache_page(60)(sitemap_view), {'sitemaps': [...]}, name='cached-sitemap'),
+        ...
+    ]
+
+and inform django-robots about the view name by adding the followin setting::
+
+    ROBOTS_SITEMAP_VIEW_NAME = 'cached-sitemap'
+
+
 .. _Sitemap contrib app: http://docs.djangoproject.com/en/dev/ref/contrib/sitemaps/
+
+Use ``ROBOTS_SITEMAP_VIEW_NAME`` also if you use custom sitemap views (e.g.: wagtail custom sitemaps).
 
 Initialization
 ==============
@@ -66,7 +81,7 @@ Initialization
 To activate robots.txt generation on your Django site, add this line to your
 URLconf_::
 
-    (r'^robots\.txt$', include('robots.urls')),
+    url(r'^robots\.txt', include('robots.urls')),
 
 This tells Django to build a robots.txt when a robot accesses ``/robots.txt``.
 Then, please sync your database to create the necessary tables and create
@@ -102,6 +117,21 @@ existing web robots user agent strings.
 .. _'sites' framework: http://www.djangoproject.com/documentation/sites/
 .. _database of web robots: http://www.robotstxt.org/db.html
 
+Host directive
+==============
+By default a ``Host`` statement is automatically added to the resulting
+robots.txt to avoid mirrors and select the main website properly.
+
+To change the default behaviour to omit the inclusion of host directive,
+change the ``ROBOTS_USE_HOST`` setting in your Django settings file to::
+
+    ROBOTS_USE_HOST = False
+
+if you want to prefix the domain with the current request protocol
+(**http** or **https** as in ``Host: https://www.mysite.com``) add this setting::
+
+    ROBOTS_USE_SCHEME_IN_HOST = True
+
 URLs
 ====
 
@@ -127,60 +157,10 @@ settings file::
 This tells Django to cache the ``robots.txt`` for 24 hours (86400 seconds).
 The default value is ``None`` (no caching).
 
-Changelog
-=========
-
-1.0 (01/16/2014)
-----------------
-
-- *BACKWARDS-INCOMPATIBLE* change: The default behaviour of this app has
-  changed to **allow all bots** from the previous opposite behavior.
-
-- Fixed some backward compatibility issues.
-
-- Updated existing translations (Danish, German, French,
-  Portugese (Brasil), Russian).
-
-- Added Greek, Spanish (Spain), Japanese, Dutch, Slovak and Ukrainian
-  translations.
-
-0.9.2 (03/24/2013)
-------------------
-
-- Fixed compatibility with Django 1.5. Thanks, Russell Keith-Magee.
-
-0.9.1 (11/23/2012)
-------------------
-
-- Fixed argument signature in new class based view. Thanks, mkai.
-
-0.9 (11/21/2012)
-----------------
-
-- Deprecated ``ROBOTS_SITEMAP_URL`` setting. Use ``ROBOTS_SITEMAP_URLS``
-  instead.
-
-- Refactored ``rule_list`` view to be class based. django-robots now
-  requires Django >= 1.3.
-
-- Stop returning 404 pages if there are no Rules setup on the site. Instead
-  dissallow access for all robots.
-
-- Added an initial South migration. If you're using South you have to "fake"
-  the initial database migration::
-
-     python manage.py migrate --fake robots 0001
-
-- Added initial Sphinx docs.
-
 Bugs and feature requests
 =========================
 
 As always your mileage may vary, so please don't hesitate to send feature
 requests and bug reports:
 
-    https://github.com/jezdez/django-robots/issues
-
-Thanks! Feel free to leave a tip, too:
-
-    https://www.gittip.com/jezdez/
+    https://github.com/jazzband/django-robots/issues
